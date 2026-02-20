@@ -1,27 +1,57 @@
-// --- Energy Consumption Variables ---
-float chargingVoltage = 220.0;  // Adjust per your charger
-float chargingCurrent = 5.0;    // Adjust per your charger
-float pad1_energy = 0.0;
-float pad2_energy = 0.0;
-float pad3_energy = 0.0;
+#include <iostream>
+#include <chrono>
+#include <thread>
 
-// --- Inside loop() ---
-// Update energy only for pads that are currently charging
-unsigned long currentMillis = millis();
+using namespace std;
+using namespace std::chrono;
 
-if (pad1_occupied) {
-    pad1_energy = chargingVoltage * chargingCurrent * ((currentMillis - pad1_startTime) / 3600000.0); // kWh
+int main() {
+    // --- Prototype Charger Values ---
+    float chargingVoltage = 3.7;   // volts (wireless prototype)
+    float chargingCurrent = 2.0;   // amps
+    float power = chargingVoltage * chargingCurrent; // watts
+
+    // --- Sensor states ---
+    bool pad_occupied = false;     // current sensor state
+    bool previous_state = false;   // last sensor state
+
+    // --- Energy variables ---
+    steady_clock::time_point start_time;
+
+    cout << "Waiting for vehicle...\n\n";
+
+    while (true) {
+
+        // 🔹 SIMULATION INPUT (CHANGE MANUALLY FOR TESTING)
+        // Uncomment ONLY ONE at a time
+
+        // pad_occupied = true;   // vehicle placed on pad
+        // pad_occupied = false;  // vehicle removed from pad
+
+        // ---- Vehicle just arrived ----
+        if (pad_occupied && !previous_state) {
+            start_time = steady_clock::now();
+            cout << "Vehicle detected. Charging started." << endl;
+        }
+
+        // ---- Vehicle just left ----
+        if (!pad_occupied && previous_state) {
+            auto end_time = steady_clock::now();
+            auto charging_time_sec =
+                duration_cast<seconds>(end_time - start_time).count();
+
+            // Energy calculation (Wh)
+            float energy_consumed = (power * charging_time_sec) / 3600;
+
+            cout << "Vehicle removed. Charging stopped." << endl;
+            cout << "Energy Consumed: " << energy_consumed << " Wh\n" << endl;
+        }
+
+        previous_state = pad_occupied;
+
+        // Delay of 1 second (same as time.sleep(1))
+        this_thread::sleep_for(seconds(1));
+    }
+
+    return 0;
 }
-
-if (pad2_occupied) {
-    pad2_energy = chargingVoltage * chargingCurrent * ((currentMillis - pad2_startTime) / 3600000.0); // kWh
-}
-
-if (pad3_occupied) {
-    pad3_energy = chargingVoltage * chargingCurrent * ((currentMillis - pad3_startTime) / 3600000.0); // kWh
-}
-
-// --- Optional: print to Serial for testing ---
-Serial.print("Pad1 Energy: "); Serial.print(pad1_energy, 2); Serial.println(" kWh");
-Serial.print("Pad2 Energy: "); Serial.print(pad2_energy, 2); Serial.println(" kWh");
-Serial.print("Pad3 Energy: "); Serial.print(pad3_energy, 2); Serial.println(" kWh");
